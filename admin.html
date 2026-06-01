@@ -577,9 +577,19 @@ function logout(){
 }
 
 // ==================== INIT ====================
-function initApp(){
+async function initApp(){
   updateClock();setInterval(updateClock,1000);
   renderDashboard();renderOrders();renderNfts();renderPrices();
+  // Load current settings from Firebase into form
+  if(window._fbLoadSettings){
+    try {
+      const s = await window._fbLoadSettings();
+      if(s){
+        if(s.telegram) document.getElementById('s-tg').value = s.telegram;
+        if(s.phone) document.getElementById('s-phone').value = s.phone;
+      }
+    } catch(e){ console.log('settings load error',e); }
+  }
 }
 function updateClock(){
   const now=new Date();
@@ -825,7 +835,23 @@ function changePass(){
   showToast('رمز عبور تغییر یافت ✓');
   ['old-pass','new-pass','new-pass2'].forEach(id=>document.getElementById(id).value='');
 }
-function saveSettings(){showToast('تنظیمات ذخیره شد ✓')}
+async function saveSettings(){
+  const data = {
+    phone: document.getElementById('s-phone').value.trim(),
+    telegram: document.getElementById('s-tg').value.trim().replace('@',''),
+    siteName: 'TeleMarket',
+    designer: 'AtomNet Team',
+    designerLink: 'https://t.me/AtomNet1'
+  };
+  try {
+    if(window._fbSaveSettings) {
+      await window._fbSaveSettings(data);
+      showToast('تنظیمات ذخیره و sync شد ✓');
+    } else {
+      showToast('Firebase متصل نیست','error');
+    }
+  } catch(e){ showToast('خطا: '+e.message,'error'); }
+}
 
 // ==================== MODAL ====================
 function closeModal(id){document.getElementById(id).classList.remove('open')}

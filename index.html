@@ -775,8 +775,9 @@ function toggleFaq(el){
 
 // ORDER
 function openOrder(product){
+  const tg = window._supportTg || 'AtomNet1';
   const msg=encodeURIComponent('سلام، میخوام سفارش بدم:\n\n'+product);
-  window.open('https://t.me/AtomNet1?text='+msg,'_blank');
+  window.open('https://t.me/'+tg+'?text='+msg,'_blank');
 }
 function orderStars(){
   const count=document.getElementById('stars-display').textContent;
@@ -796,7 +797,7 @@ function submitForm(){
   const desc=document.getElementById('f-desc').value.trim();
   if(!name||!tg||!type){showToast('لطفاً تمام فیلدها را پر کنید');return;}
   const msg=`سلام، سفارش دارم:\n\nنام: ${name}\nتلگرام: ${tg}\nنوع سفارش: ${type}${desc?'\nتوضیحات: '+desc:''}`;
-  window.open('https://t.me/AtomNet1?text='+encodeURIComponent(msg),'_blank');
+  const tg=window._supportTg||'AtomNet1';window.open('https://t.me/'+tg+'?text='+encodeURIComponent(msg),'_blank');
   showToast('درحال انتقال به تلگرام...');
 }
 
@@ -903,23 +904,61 @@ window.addEventListener('scroll',()=>{
       } catch(e) { console.log('NFTs load error:', e); }
     }
 
-    // Load contact info
+    // Load contact info from Firebase
     async function loadSettings() {
       try {
         const snap = await getDoc(doc(db, 'settings', 'contact'));
         if (!snap.exists()) return;
         const s = snap.data();
+
+        // Update all phone links and text
         if (s.phone) {
+          const displayPhone = s.phone.replace('+98','0');
           document.querySelectorAll('a[href^="tel:"]').forEach(el => {
             el.href = 'tel:' + s.phone;
-            el.textContent = s.phone.replace('+98','0');
+            el.textContent = displayPhone;
+          });
+          // Also update plain text phone in contact card
+          document.querySelectorAll('.contact-card-val').forEach(el => {
+            if(el.textContent.includes('913') || el.textContent.includes('+98')) {
+              el.innerHTML = '<a href="tel:'+s.phone+'" style="color:var(--text);text-decoration:none">'+displayPhone+'</a>';
+            }
           });
         }
+
+        // Update ALL telegram links dynamically
         if (s.telegram) {
-          document.querySelectorAll('a[href*="t.me/AtomNet"]').forEach(el => {
-            el.href = 'https://t.me/' + s.telegram.replace('@','');
+          const tgHandle = s.telegram.replace('@','');
+          const tgUrl = 'https://t.me/' + tgHandle;
+
+          // Nav CTA button
+          document.querySelectorAll('a.nav-cta').forEach(el => {
+            if(el.textContent.includes('سفارش')) el.href = '#contact';
+          });
+
+          // Support buttons
+          document.querySelectorAll('a[href*="t.me/"]').forEach(el => {
+            // Only update support/contact links, not designer credit
+            if(el.textContent.includes('پشتیبانی') ||
+               el.textContent.includes('AtomNet') ||
+               el.textContent.includes('@Atom') ||
+               el.href.includes('AtomNet1')) {
+              el.href = tgUrl;
+              if(el.textContent.includes('@')) el.textContent = '@' + tgHandle;
+            }
+          });
+
+          // Update openOrder function to use correct telegram
+          window._supportTg = tgHandle;
+        }
+
+        // Update designer credit link
+        if (s.designerLink) {
+          document.querySelectorAll('a[href*="t.me/AtomNet1"]').forEach(el => {
+            if(el.textContent.includes('AtomNet')) el.href = s.designerLink;
           });
         }
+
       } catch(e) { console.log('Settings load error:', e); }
     }
 
