@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>TeleMarket — Firebase Seed</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0e1a;--card:#161d30;--blue:#2AABEE;--text:#e8edf5;--text2:#9aaabf;--green:#22c55e;--red:#ef4444;--border:rgba(42,171,238,0.15);--font:'Vazirmatn',sans-serif}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;direction:rtl}
+.box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:2.5rem;width:100%;max-width:580px}
+h1{font-size:1.4rem;font-weight:800;margin-bottom:.4rem}
+.sub{font-size:.88rem;color:var(--text2);margin-bottom:2rem;line-height:1.6}
+.step{background:rgba(42,171,238,0.06);border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1rem}
+.step-title{font-size:.9rem;font-weight:700;margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem}
+.step-num{width:24px;height:24px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0}
+input{width:100%;background:#0f1423;border:1px solid var(--border);border-radius:8px;padding:.7rem 1rem;color:var(--text);font-family:var(--font);font-size:.9rem;margin-bottom:.5rem}
+input:focus{outline:none;border-color:var(--blue)}
+.btn{width:100%;background:var(--blue);color:#fff;border:none;padding:.9rem;border-radius:10px;cursor:pointer;font-family:var(--font);font-size:1rem;font-weight:700;transition:all .2s;margin-top:.5rem}
+.btn:hover{background:#1a8fc7}
+.btn:disabled{background:#333;cursor:not-allowed}
+.log{margin-top:1.5rem;background:#0f1423;border:1px solid var(--border);border-radius:10px;padding:1rem;max-height:280px;overflow-y:auto;font-size:.82rem;line-height:1.9}
+.log-item{display:flex;align-items:flex-start;gap:.5rem}
+.log-item.ok{color:var(--green)}
+.log-item.err{color:var(--red)}
+.log-item.info{color:var(--text2)}
+.log-item.head{color:var(--blue);font-weight:700}
+.done-box{background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:1.2rem;margin-top:1rem;text-align:center;display:none}
+.done-box h3{color:var(--green);font-size:1.1rem;margin-bottom:.4rem}
+.done-box p{font-size:.85rem;color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🔥 راه‌اندازی Firebase</h1>
+  <p class="sub">این صفحه یک‌بار اجرا میشه و همه داده‌های اولیه TeleMarket رو به Firebase وارد می‌کنه. بعد از اتمام این فایل رو از GitHub حذف کن.</p>
+
+  <div class="step">
+    <div class="step-title"><div class="step-num">۱</div> ورود با ایمیل ادمین</div>
+    <input type="email" id="email" placeholder="admin@telemarket.ir" value="admin@telemarket.ir">
+    <input type="password" id="pass" placeholder="پسورد Firebase ادمین">
+  </div>
+
+  <div class="step">
+    <div class="step-title"><div class="step-num">۲</div> داده‌های اولیه</div>
+    <p style="font-size:.82rem;color:var(--text2);line-height:1.7">
+      ✅ قیمت‌های پریمیوم، استارز، گیو اوی<br>
+      ✅ اطلاعات تماس<br>
+      ✅ ۶ عدد NFT Light Sword<br>
+      ✅ تنظیمات سایت
+    </p>
+  </div>
+
+  <button class="btn" id="seed-btn" onclick="runSeed()">🚀 شروع راه‌اندازی Firebase</button>
+
+  <div class="log" id="log" style="display:none"></div>
+  <div class="done-box" id="done-box">
+    <h3>✅ Firebase با موفقیت راه‌اندازی شد!</h3>
+    <p>حالا میتونی این فایل رو از GitHub حذف کنی و از پنل ادمین استفاده کنی.</p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, collection, addDoc, getDocs, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAFDR12D2xAhNQMvArUinZ3utMvvqJNdtQ",
+  authDomain: "telemarket-228d7.firebaseapp.com",
+  projectId: "telemarket-228d7",
+  storageBucket: "telemarket-228d7.firebasestorage.app",
+  messagingSenderId: "912765205860",
+  appId: "1:912765205860:web:fe34f79d158e7d2b5c8e71"
+};
+
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+// ── داده‌های اولیه ──────────────────────────────────────
+
+const PRICES = {
+  premium:    { m3: 2600000, m6: 3900000, y1: 5800000 },
+  stars:      { perStar: 2900, min: 100 },
+  gw_premium: { m3: 2900000, m6: 4200000, y1: 7900000 },
+  gw_stars:   { p500: 1700000, p1000: 3200000, p1500: 4900000, p2500: 7800000, p10000: 29900000 }
+};
+
+const CONTACT = {
+  phone: "+989134388088",
+  telegram: "AtomNet1",
+  siteName: "TeleMarket",
+  designer: "AtomNet Team",
+  designerLink: "https://t.me/AtomNet1"
+};
+
+const SITE_SETTINGS = {
+  heroTitle: "بهترین خدمات تلگرام را از ما بخرید",
+  heroDesc: "پریمیوم تلگرام، استارز، گیو اوی کانال و NFT هدایا — همه با قیمت مناسب",
+  maintenanceMode: false,
+  showNFTs: true,
+  showGiveaway: true
+};
+
+const NFTS = [
+  { name:"Light Sword — Pink",    emoji:"🗡", rarity:"Ultra Rare", price:"۲,۰۰۰,۰۰۰", desc:"شمشیر نوری صورتی — یه گیفت خاص و منحصربه‌فرد برای دوستانت",  ton:"—", order:1 },
+  { name:"Light Sword — Blue Wave",emoji:"🗡",rarity:"Legendary",  price:"۲,۰۰۰,۰۰۰", desc:"شمشیر نوری آبی موجی — کلکسیونی بی‌نظیر از Fragment",          ton:"—", order:2 },
+  { name:"Light Sword — Blue Pro", emoji:"🗡", rarity:"Epic",      price:"۲,۰۰۰,۰۰۰", desc:"شمشیر نوری آبی حرفه‌ای — برای گیفت دادن به بهترین‌ها",         ton:"—", order:3 },
+  { name:"Light Sword — Wood",     emoji:"🗡", rarity:"Rare",      price:"۲,۰۰۰,۰۰۰", desc:"شمشیر چوبی طبیعی — نادر، دوست‌داشتنی و قابل هدیه",             ton:"—", order:4 },
+  { name:"Light Sword — Orange",   emoji:"🗡", rarity:"Epic",      price:"۲,۰۰۰,۰۰۰", desc:"شمشیر نوری نارنجی — هدیه‌ای که هیچ‌وقت فراموش نمیشه",           ton:"—", order:5 },
+  { name:"Light Sword — Golden",   emoji:"🗡", rarity:"Legendary", price:"۲,۰۰۰,۰۰۰", desc:"شمشیر طلایی — باارزش‌ترین گیفت تلگرام برای عزیزانت",            ton:"—", order:6 },
+];
+
+// ── Logger ──────────────────────────────────────────────
+function log(msg, type='info') {
+  const logEl = document.getElementById('log');
+  logEl.style.display = 'block';
+  const icons = { ok:'✅', err:'❌', info:'⏳', head:'🔷' };
+  logEl.innerHTML += `<div class="log-item ${type}">${icons[type]||'•'} ${msg}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── Seed ────────────────────────────────────────────────
+window.runSeed = async function() {
+  const email = document.getElementById('email').value.trim();
+  const pass  = document.getElementById('pass').value;
+  const btn   = document.getElementById('seed-btn');
+
+  if (!email || !pass) { alert('ایمیل و پسورد را وارد کنید'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'در حال راه‌اندازی...';
+  document.getElementById('log').innerHTML = '';
+
+  try {
+    // Step 1: Auth
+    log('ورود به Firebase...', 'info');
+    await signInWithEmailAndPassword(auth, email, pass);
+    log('ورود موفق ✓', 'ok');
+
+    // Step 2: Prices
+    log('ذخیره قیمت‌ها...', 'head');
+    await setDoc(doc(db, 'settings', 'prices'), PRICES);
+    log('قیمت پریمیوم ذخیره شد', 'ok');
+    log('قیمت استارز ذخیره شد', 'ok');
+    log('قیمت گیو اوی ذخیره شد', 'ok');
+
+    // Step 3: Contact
+    log('ذخیره اطلاعات تماس...', 'head');
+    await setDoc(doc(db, 'settings', 'contact'), CONTACT);
+    log('اطلاعات تماس ذخیره شد', 'ok');
+
+    // Step 4: Site settings
+    log('ذخیره تنظیمات سایت...', 'head');
+    await setDoc(doc(db, 'settings', 'site'), SITE_SETTINGS);
+    log('تنظیمات سایت ذخیره شد', 'ok');
+
+    // Step 5: NFTs — clear old then add new
+    log('ذخیره NFT ها...', 'head');
+    const oldNfts = await getDocs(collection(db, 'nfts'));
+    for (const d of oldNfts.docs) await deleteDoc(doc(db, 'nfts', d.id));
+    for (const nft of NFTS) {
+      await addDoc(collection(db, 'nfts'), nft);
+      log('NFT اضافه شد: ' + nft.name, 'ok');
+    }
+
+    // Step 6: Firestore Rules reminder
+    log('─────────────────────', 'info');
+    log('همه داده‌ها با موفقیت وارد شدند!', 'ok');
+    log('فراموش نکن Rules Firestore رو تنظیم کنی', 'info');
+
+    document.getElementById('done-box').style.display = 'block';
+    btn.textContent = '✅ انجام شد';
+
+  } catch(e) {
+    log('خطا: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = '🚀 تلاش مجدد';
+  }
+};
+</script>
+</body>
+</html>
