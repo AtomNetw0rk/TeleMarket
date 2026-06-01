@@ -812,5 +812,124 @@ window.addEventListener('scroll',()=>{
   document.querySelector('nav').style.background=window.scrollY>50?'rgba(10,14,26,0.97)':'rgba(10,14,26,0.92)';
 });
 </script>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAFDR12D2xAhNQMvArUinZ3utMvvqJNdtQ",
+      authDomain: "telemarket-228d7.firebaseapp.com",
+      projectId: "telemarket-228d7",
+      storageBucket: "telemarket-228d7.firebasestorage.app",
+      messagingSenderId: "912765205860",
+      appId: "1:912765205860:web:fe34f79d158e7d2b5c8e71"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Load prices from Firebase and update UI
+    async function loadPrices() {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'prices'));
+        if (!snap.exists()) return;
+        const p = snap.data();
+
+        // Premium prices
+        if (p.premium) {
+          const cards = document.querySelectorAll('.premium-card');
+          const labels = ['m3','m6','y1'];
+          cards.forEach((card, i) => {
+            const priceEl = card.querySelector('.card-price');
+            if (priceEl && p.premium[labels[i]]) {
+              const val = Number(p.premium[labels[i]]).toLocaleString('fa');
+              priceEl.innerHTML = val + ' <span>تومان</span>';
+            }
+          });
+        }
+
+        // Stars price per unit
+        if (p.stars && p.stars.perStar) {
+          window._starPrice = p.stars.perStar;
+          window._starMin = p.stars.min || 100;
+          updateCalc(document.getElementById('stars-range')?.value || p.stars.min);
+        }
+
+        // Giveaway premium prices
+        if (p.gw_premium) {
+          window._gwPrices = [p.gw_premium.m3, p.gw_premium.m6, p.gw_premium.y1];
+          updateGwPrices();
+        }
+
+        // Giveaway stars
+        if (p.gw_stars) {
+          const vals = [p.gw_stars.p500, p.gw_stars.p1000, p.gw_stars.p1500, p.gw_stars.p2500, p.gw_stars.p10000];
+          document.querySelectorAll('.gw-star-price').forEach((el, i) => {
+            if (vals[i]) el.textContent = Number(vals[i]).toLocaleString('fa') + ' ت';
+          });
+        }
+      } catch(e) { console.log('Prices load error:', e); }
+    }
+
+    // Load NFTs from Firebase
+    async function loadNFTs() {
+      try {
+        const snap = await getDocs(collection(db, 'nfts'));
+        if (snap.empty) return;
+        const nfts = [];
+        snap.forEach(d => nfts.push({id: d.id, ...d.data()}));
+        if (nfts.length === 0) return;
+
+        const grid = document.getElementById('nft-grid');
+        grid.innerHTML = '';
+        nfts.forEach(n => {
+          const c = document.createElement('div');
+          c.className = 'nft-card';
+          const imgSrc = n.img || '';
+          const imgTag = imgSrc
+            ? '<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;display:block">'
+            : '<span style="font-size:3rem">' + (n.emoji||'💎') + '</span>';
+          c.innerHTML = '<div class="nft-img" style="padding:0;overflow:hidden;background:#111">'+imgTag+'</div>'
+            +'<div class="nft-body"><div class="nft-name">'+n.name+'</div>'
+            +'<div style="font-size:.78rem;color:#9aaabf;margin-bottom:.5rem;line-height:1.5">'+(n.desc||'')+'</div>'
+            +'<div class="nft-price-row"><div><div class="nft-price">'+(n.price||'')+'ت</div>'
+            +'<div style="font-size:.75rem;color:#2AABEE">🎁 قابل هدیه در تلگرام</div></div>'
+            +'<span class="nft-tag">Fragment</span></div></div>';
+          c.onclick = () => openOrder('NFT: '+n.name+' — '+n.price+' تومان');
+          grid.appendChild(c);
+        });
+      } catch(e) { console.log('NFTs load error:', e); }
+    }
+
+    // Load contact info
+    async function loadSettings() {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'contact'));
+        if (!snap.exists()) return;
+        const s = snap.data();
+        if (s.phone) {
+          document.querySelectorAll('a[href^="tel:"]').forEach(el => {
+            el.href = 'tel:' + s.phone;
+            el.textContent = s.phone.replace('+98','0');
+          });
+        }
+        if (s.telegram) {
+          document.querySelectorAll('a[href*="t.me/AtomNet"]').forEach(el => {
+            el.href = 'https://t.me/' + s.telegram.replace('@','');
+          });
+        }
+      } catch(e) { console.log('Settings load error:', e); }
+    }
+
+    // Run after page loads
+    window.addEventListener('load', () => {
+      loadPrices();
+      loadNFTs();
+      loadSettings();
+    });
+  </script>
+
 </body>
 </html>

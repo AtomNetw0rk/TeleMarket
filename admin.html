@@ -168,15 +168,135 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 <body>
 
 <!-- LOGIN -->
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAFDR12D2xAhNQMvArUinZ3utMvvqJNdtQ",
+      authDomain: "telemarket-228d7.firebaseapp.com",
+      projectId: "telemarket-228d7",
+      storageBucket: "telemarket-228d7.firebasestorage.app",
+      messagingSenderId: "912765205860",
+      appId: "1:912765205860:web:fe34f79d158e7d2b5c8e71"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+    const auth = getAuth(app);
+
+    // ── AUTH ──────────────────────────────────────────────
+    window.doLogin = async function() {
+      const email = document.getElementById('login-email').value.trim();
+      const pass  = document.getElementById('pass-input').value;
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch(e) {
+        document.getElementById('login-err').style.display='block';
+        setTimeout(()=>document.getElementById('login-err').style.display='none',2500);
+      }
+    };
+
+    window.logout = async function() {
+      await signOut(auth);
+    };
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        document.getElementById('login-screen').style.display='none';
+        document.getElementById('app').style.display='block';
+        initApp();
+      } else {
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('app').style.display='none';
+      }
+    });
+
+    // ── ORDERS ───────────────────────────────────────────
+    window._fbSaveOrder = async function(data, editingId) {
+      if (editingId) {
+        await updateDoc(doc(db,'orders', String(editingId)), data);
+      } else {
+        await addDoc(collection(db,'orders'), data);
+      }
+    };
+
+    window._fbDeleteOrder = async function(id) {
+      await deleteDoc(doc(db,'orders', String(id)));
+    };
+
+    window._fbLoadOrders = async function() {
+      const snap = await getDocs(collection(db,'orders'));
+      const orders = [];
+      snap.forEach(d => orders.push({fbId: d.id, ...d.data()}));
+      return orders;
+    };
+
+    window._fbMarkDone = async function(fbId) {
+      await updateDoc(doc(db,'orders', fbId), {status:'done'});
+    };
+
+    // ── NFTs ──────────────────────────────────────────────
+    window._fbSaveNft = async function(data, fbId) {
+      if (fbId) {
+        await updateDoc(doc(db,'nfts', fbId), data);
+      } else {
+        await addDoc(collection(db,'nfts'), data);
+      }
+    };
+
+    window._fbDeleteNft = async function(fbId) {
+      await deleteDoc(doc(db,'nfts', fbId));
+    };
+
+    window._fbLoadNfts = async function() {
+      const snap = await getDocs(collection(db,'nfts'));
+      const nfts = [];
+      snap.forEach(d => nfts.push({fbId: d.id, ...d.data()}));
+      return nfts;
+    };
+
+    // ── PRICES ────────────────────────────────────────────
+    window._fbSavePrices = async function(group, data) {
+      const snap = await getDoc(doc(db,'settings','prices'));
+      const current = snap.exists() ? snap.data() : {};
+      current[group] = data;
+      await setDoc(doc(db,'settings','prices'), current);
+    };
+
+    window._fbLoadPrices = async function() {
+      const snap = await getDoc(doc(db,'settings','prices'));
+      return snap.exists() ? snap.data() : null;
+    };
+
+    // ── SETTINGS ──────────────────────────────────────────
+    window._fbSaveSettings = async function(data) {
+      await setDoc(doc(db,'settings','contact'), data);
+    };
+
+    window._fbLoadSettings = async function() {
+      const snap = await getDoc(doc(db,'settings','contact'));
+      return snap.exists() ? snap.data() : null;
+    };
+
+    console.log("Firebase connected ✓");
+  </script>
+
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">🔐</div>
     <h2>پنل مدیریت TeleMarket</h2>
     <p>رمز عبور خود را وارد کنید</p>
+    <input type="email" class="login-input" id="login-email" placeholder="ایمیل ادمین" style="letter-spacing:0;margin-bottom:.7rem">
     <input type="password" class="login-input" id="pass-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="login-btn" onclick="doLogin()">ورود به پنل</button>
     <div class="login-err" id="login-err">رمز عبور اشتباه است</div>
-    <p style="font-size:.72rem;color:var(--text3);margin-top:1.5rem">رمز پیش‌فرض: <code style="color:var(--blue)">admin1234</code></p>
+    <p style="font-size:.72rem;color:var(--text3);margin-top:1.5rem">ورود با ایمیل Firebase</p>
   </div>
 </div>
 
@@ -550,8 +670,7 @@ function editOrder(id){
   document.getElementById('m-note').value=o.note||'';
   document.getElementById('order-modal').classList.add('open');
 }
-function saveOrder(){
-  const orders=loadOrders();
+async function saveOrder(){
   const today=new Date().toLocaleDateString('fa-IR');
   const data={
     name:document.getElementById('m-name').value.trim(),
@@ -563,15 +682,19 @@ function saveOrder(){
     date:today
   };
   if(!data.name||!data.tg){showToast('نام و آیدی تلگرام را وارد کنید','error');return;}
-  if(editingOrderId){
-    const idx=orders.findIndex(o=>o.id===editingOrderId);
-    if(idx>-1)orders[idx]={...orders[idx],...data};
-  } else {
-    const maxId=orders.reduce((m,o)=>Math.max(m,o.id),1000);
-    orders.push({id:maxId+1,...data});
-  }
-  saveOrders(orders);renderOrders();renderDashboard();
-  closeModal('order-modal');showToast('سفارش ذخیره شد ✓');
+  try {
+    if(window._fbSaveOrder) await window._fbSaveOrder(data, editingOrderId);
+    const orders=loadOrders();
+    if(editingOrderId){
+      const idx=orders.findIndex(o=>o.id===editingOrderId||o.fbId===editingOrderId);
+      if(idx>-1)orders[idx]={...orders[idx],...data};
+    } else {
+      const maxId=orders.reduce((m,o)=>Math.max(m,o.id||0),1000);
+      orders.push({id:maxId+1,...data});
+    }
+    saveOrders(orders);renderOrders();renderDashboard();
+    closeModal('order-modal');showToast('سفارش ذخیره شد ✓');
+  } catch(e){showToast('خطا در ذخیره: '+e.message,'error');}
 }
 function deleteOrder(id){
   if(!confirm('آیا مطمئنی؟'))return;
@@ -677,13 +800,17 @@ function renderPrices(){
       <button class="save-prices-btn" onclick="savePriceGroup('gw_stars')">ذخیره</button>
     </div>`;
 }
-function savePriceGroup(group){
+async function savePriceGroup(group){
   const p=loadPrices();
   if(group==='premium'){p.premium={m3:+document.getElementById('p-pm3').value,m6:+document.getElementById('p-pm6').value,y1:+document.getElementById('p-py1').value}}
   if(group==='stars'){p.stars={perStar:+document.getElementById('p-sper').value,min:+document.getElementById('p-smin').value}}
   if(group==='gw_premium'){p.gw_premium={m3:+document.getElementById('p-gpm3').value,m6:+document.getElementById('p-gpm6').value,y1:+document.getElementById('p-gpy1').value}}
   if(group==='gw_stars'){p.gw_stars={p500:+document.getElementById('p-gs500').value,p1000:+document.getElementById('p-gs1000').value,p1500:+document.getElementById('p-gs1500').value,p2500:+document.getElementById('p-gs2500').value,p10000:+document.getElementById('p-gs10000').value}}
-  savePrices(p);showToast('قیمت‌ها ذخیره شد ✓');
+  savePrices(p);
+  if(window._fbSavePrices){
+    const groupData = group==='premium'?p.premium:group==='stars'?p.stars:group==='gw_premium'?p.gw_premium:p.gw_stars;
+    window._fbSavePrices(group, groupData).then(()=>showToast('قیمت‌ها ذخیره و sync شد ✓')).catch(e=>showToast('خطا: '+e.message,'error'));
+  } else { showToast('قیمت‌ها ذخیره شد ✓'); }
 }
 
 // ==================== SETTINGS ====================
